@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sensor dan Aktuator Reading</title>
+    <style>
+        body {
+            background-color: #1e1e1e;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        .data-head {
+            width: 80%;
+            margin: 30px auto;
+            font-size: 36px;
+            font-weight: bold;
+            padding: 15px;
+            background: linear-gradient(45deg, #002c5e, #00aaff);
+            color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .data-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 20px auto;
+            width: 80%;
+        }
+
+        .data-item {
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            padding: 20px;
+            width: 220px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .data-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .data-item h2 {
+            font-size: 22px;
+            color: #ffffff;
+        }
+
+        .data-item p {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00ffcc;
+        }
+
+        .led-indicator {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 20px auto;
+            background-color: gray;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .history-container {
+            width: 80%;
+            margin: 30px auto;
+            background: #2b2b2b;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: #ffffff;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #444;
+        }
+
+        th {
+            background: #00aaff;
+        }
+
+        tr:nth-child(even) {
+            background: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="data-head">DHT Sensor & LED WS2812 Status</div>
+
+    <div class="data-container">
+        <div class="data-item" onclick="showHistory('temperature')">
+            <h2>Temperature</h2>
+            <p id="temperature">-- &#8451;</p>
+        </div>
+        <div class="data-item" onclick="showHistory('humidity')">
+            <h2>Humidity</h2>
+            <p id="humidity">--%</p>
+        </div>
+        <div class="data-item" onclick="showHistory('gas')">
+            <h2>Gas</h2>
+            <p id="gas">-- ppm</p>
+        </div>
+    </div>
+
+    <h2>Status LED WS2812</h2>
+    <div class="led-indicator" id="ledColor"></div>
+
+    <div class="history-container">
+        <h2>Riwayat Data Sensor</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Sensor</th>
+                    <th>Nilai</th>
+                    <th>Waktu</th>
+                </tr>
+            </thead>
+            <tbody id="historyTable">
+                <tr><td colspan="3">Belum ada data</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+
+    <script>
+        // Konfigurasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBfGqdtdvGZhUNk0Oxtul4Qe1j1XkvMYxQ",
+            authDomain: "fadhilpwiot.firebaseapp.com",
+            databaseURL: "https://fadhilpwiot-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "fadhilpwiot",
+            storageBucket: "fadhilpwiot.firebasestorage.app",
+            messagingSenderId: "532452956322",
+            appId: "1:532452956322:web:4394d5b4ef280b643f5ffb"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        var database = firebase.database();
+
+        var dataRef1 = database.ref('sensor_value/dht22_humidity');
+        var dataRef2 = database.ref('sensor_value/dht22_temperature');
+        var dataRef3 = database.ref('sensor_value/mq135_gas');
+
+        function getCurrentTime() {
+            let now = new Date();
+            return now.getHours() + ":" + now.getMinutes() + ":" + now.getSeconds();
+        }
+
+        function addHistory(sensor, value) {
+            let table = document.getElementById('historyTable');
+            let newRow = table.insertRow(1);
+            newRow.innerHTML = `<td>${sensor}</td><td>${value}</td><td>${getCurrentTime()}</td>`;
+        }
+
+        dataRef1.on('value', function(snapshot) {
+            let humi = snapshot.val();
+            document.getElementById('humidity').innerHTML = humi + "%";
+            addHistory('Humidity', humi + "%");
+        });
+
+        dataRef2.on('value', function(snapshot) {
+            let temp = snapshot.val();
+            document.getElementById('temperature').innerHTML = temp + " &#8451;";
+            addHistory('Temperature', temp + " &#8451;");
+        });
+
+        dataRef3.on('value', function(snapshot) {
+            let gas = snapshot.val();
+            document.getElementById('gas').innerHTML = gas + " ppm";
+            addHistory('Gas', gas + " ppm");
+
+            let ledColorDiv = document.getElementById('ledColor');
+            if (gas > 4000) {
+                ledColorDiv.style.backgroundColor = "green";
+            } else if (gas >= 2000 && gas <= 4000) {
+                ledColorDiv.style.backgroundColor = "blue";
+            } else {
+                ledColorDiv.style.backgroundColor = "red";
+            }
+        });
+
+        function showHistory(sensor) {
+            alert("Riwayat data " + sensor + " tersedia di tabel di bawah.");
+        }
+    </script>
+
+</body>
+</html>
